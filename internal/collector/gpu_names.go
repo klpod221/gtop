@@ -12,6 +12,7 @@ var (
 	gpuNamesOnce sync.Once
 	intelGPUName string
 	amdGPUName   string
+	allGPUNames  []string
 )
 
 // DetectGPUNames runs lspci to find the hardware names for GPUs.
@@ -35,6 +36,8 @@ func DetectGPUNames() {
 					if idx := strings.LastIndex(name, " (rev "); idx != -1 {
 						name = strings.TrimSpace(name[:idx])
 					}
+
+					allGPUNames = append(allGPUNames, name)
 
 					if strings.Contains(line, "Intel") {
 						intelGPUName = name
@@ -64,4 +67,10 @@ func GetIntelGPUName() string {
 func GetAmdGPUName() string {
 	DetectGPUNames()
 	return amdGPUName
+}
+
+// GetAllGPUNames returns all graphics cards on the system
+func GetAllGPUNames() []string {
+	DetectGPUNames()
+	return allGPUNames
 }

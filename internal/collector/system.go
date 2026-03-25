@@ -80,16 +80,7 @@ func CollectHostInfo() HostInfo {
 	}
 
 	// GPUs
-	if intel := GetIntelGPUName(); intel != "" && intel != "Intel GPU" {
-		info.GPUs = append(info.GPUs, intel)
-	}
-	if amd := GetAmdGPUName(); amd != "" && amd != "AMD GPU" {
-		info.GPUs = append(info.GPUs, amd)
-	}
-	nv, _ := CollectNvidia()
-	for _, n := range nv {
-		info.GPUs = append(info.GPUs, n.Name)
-	}
+	info.GPUs = GetAllGPUNames()
 
 	// RAM
 	info.PhysicalRAM = extractPhysicalRAM()

@@ -16,7 +16,7 @@ var rootCmd = &cobra.Command{
   ██║   ██║   ██║   ██║   ██║██╔═══╝
   ╚██████╔╝   ██║   ╚██████╔╝██║
    ╚═════╝    ╚═╝    ╚═════╝ ╚═╝
-  Go Based Linux System Monitor by klpod221
+  Linux System Monitor 		by klpod221
 
 gtop is a high-performance system telemetry agent.
 It collects CPU, memory, disk, network, and GPU metrics purely in Go.`,

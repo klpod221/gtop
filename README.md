@@ -1,6 +1,6 @@
 # gtop
 
-A high-performance, Linux-native system telemetry agent written in Go with a **btop-style TUI dashboard**.  
+A high-performance, Linux-native system telemetry agent written in Go with a **TUI dashboard**.  
 Zero external shell dependencies — all data is collected by directly parsing kernel interfaces (`/proc`, `/sys`, `perf_event_open`).
 
 ## Build & Run
@@ -370,7 +370,7 @@ gtop/
 │   └── gpu_amd.go                   # AMD via sysfs (drm subsystem)
 └── tui/
     ├── app.go                       # TUI orchestrator (termdash + data loop)
-    ├── theme.go                     # btop-inspired color palette
+    ├── theme.go                     # Color palette
     ├── layout.go                    # Grid layout builder
     └── widgets/
         ├── cpu.go                   # CPU sparkline + per-core bars

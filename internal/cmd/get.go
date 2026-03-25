@@ -98,8 +98,12 @@ func runGet() {
 		var err error
 		intelCol, err = collector.NewIntelGPUCollector()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Intel GPU: %v\n", err)
-			fmt.Fprintf(os.Stderr, "  Hint: set cap_perfmon on binary: sudo setcap cap_perfmon,cap_dac_read_search=ep ./gtop\n")
+			// Only warn if an Intel GPU PMU exists but we lack permissions
+			if !strings.Contains(err.Error(), "no Intel GPU PMU device found") &&
+				!strings.Contains(err.Error(), "no GPU engines discovered") {
+				fmt.Fprintf(os.Stderr, "Intel GPU: %v\n", err)
+				fmt.Fprintf(os.Stderr, "  Hint: set cap_perfmon on binary: sudo setcap cap_perfmon,cap_dac_read_search=ep ./gtop\n")
+			}
 		}
 		if intelCol != nil {
 			defer intelCol.Close()
