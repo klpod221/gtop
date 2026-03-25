@@ -12,19 +12,19 @@ go build -o gtop .
 # With Intel GPU monitoring (requires capabilities, see below)
 sudo setcap cap_perfmon,cap_dac_read_search=ep ./gtop
 
-# Launch TUI dashboard (btop-style)
-./gtop --tui
+# Launch TUI dashboard (default)
+./gtop
 
 # Run CLI mode (JSON output)
-./gtop
+./gtop get
 ```
 
 ## TUI Dashboard
 
-Launch the interactive terminal dashboard with `--tui`:
+The interactive terminal dashboard is the default execution mode.
 
 ```bash
-./gtop --tui
+./gtop
 ```
 
 ### Layout
@@ -70,15 +70,19 @@ The `setcap` command grants **two specific Linux capabilities** to the binary:
 
 ---
 
-## CLI Flags
+## CLI Subcommands
 
 ### Mode
 
-| Flag | Default | Description | Example |
-|------|---------|-------------|---------|
-| `--tui` | `false` | Launch interactive TUI dashboard | `--tui` |
+| Command | Description | Example |
+|------|-------------|---------|
+| `gtop` / `gtop tui` | Launch interactive TUI dashboard | `./gtop` |
+| `gtop get` | Fetch and export telemetry data (JSON/Flat) | `./gtop get --modules cpu` |
+| `gtop agent` | *(Future)* Run background daemon | `./gtop agent` |
+| `gtop web` | *(Future)* Launch web-based UI | `./gtop web` |
+| `gtop mcp` | *(Future)* Launch Model Context Protocol server | `./gtop mcp` |
 
-### Module Selection (CLI mode)
+### `gtop get` Flags (CLI mode)
 
 | Flag | Default | Description | Example |
 |------|---------|-------------|---------|
@@ -124,25 +128,25 @@ Valid fields: `usage`, `freq`, `temp`, `power`, `loadavg`, `uptime`, `name`, `ba
 
 ```bash
 # Quick system overview without processes
-./gtop --modules cpu,mem --no-proc --compact
+./gtop get --modules cpu,mem --no-proc --compact
 
 # Monitor CPU power consumption only
-./gtop --modules cpu --cpu-fields power --count 0 --interval 500
+./gtop get --modules cpu --cpu-fields power --count 0 --interval 500
 
 # Top 10 processes by memory, continuously
-./gtop --modules proc --proc-sort mem --proc-top 10 --count 0
+./gtop get --modules proc --proc-sort mem --proc-top 10 --count 0
 
 # GPU monitoring, save to file
-./gtop --modules gpu --count 5 --output /tmp/gpu.json
+./gtop get --modules gpu --count 5 --output /tmp/gpu.json
 
 # Full system snapshot, compact JSON for piping
-./gtop --compact | jq '.cpu.usage_percent'
+./gtop get --compact | jq '.cpu.usage_percent'
 
 # Monitor specific network interface
-./gtop --modules net --net-iface enp1s0 --count 0
+./gtop get --modules net --net-iface enp1s0 --count 0
 
 # Filter processes matching "docker"
-./gtop --modules proc --proc-filter docker --proc-top 20
+./gtop get --modules proc --proc-filter docker --proc-top 20
 ```
 
 ---
@@ -330,13 +334,13 @@ Valid fields: `usage`, `freq`, `temp`, `power`, `loadavg`, `uptime`, `name`, `ba
 
 ### JSON (default)
 ```bash
-./gtop                    # Pretty-printed JSON
-./gtop --compact          # Single-line JSON
+./gtop get                    # Pretty-printed JSON
+./gtop get --compact          # Single-line JSON
 ```
 
 ### Flat
 ```bash
-./gtop --format flat      # Dot-notation flattened keys
+./gtop get --format flat      # Dot-notation flattened keys
 ```
 Output example:
 ```json

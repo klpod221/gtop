@@ -31,7 +31,7 @@ func CollectAmd() []AmdGPUStats {
 		}
 
 		var stats AmdGPUStats
-		stats.Name = "AMD Radeon GPU"
+		stats.Name = GetAmdGPUName()
 
 		// GPU Utilization
 		busyData, err := os.ReadFile(filepath.Join(p, "device", "gpu_busy_percent"))

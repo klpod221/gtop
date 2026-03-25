@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"gtop/collector"
-	"gtop/tui/widgets"
+	"gtop/internal/collector"
+	"gtop/internal/tui/widgets"
 
 	"github.com/mum4k/termdash"
 	"github.com/mum4k/termdash/container"

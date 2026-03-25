@@ -24,7 +24,7 @@ type ProcessInfo struct {
 	IO_WriteBytes uint64  `json:"io_write_bytes"`
 	CpuPercent    float64 `json:"cpu_percent"`
 	// btop tracks starttime for process uptime calculation
-	StartTime     uint64  `json:"start_time"`
+	StartTime uint64 `json:"start_time"`
 
 	// Internal: not exported, used for delta CPU calc
 	utime uint64

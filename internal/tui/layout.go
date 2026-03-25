@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"gtop/tui/widgets"
+	"gtop/internal/tui/widgets"
 
 	"github.com/mum4k/termdash/container"
 	"github.com/mum4k/termdash/container/grid"

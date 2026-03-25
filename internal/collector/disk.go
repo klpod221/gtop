@@ -25,11 +25,36 @@ type DiskSpace struct {
 // DiskIO holds IO statistics from /sys/block/*/stat
 type DiskIO struct {
 	Device     string `json:"device"`
+	Model      string `json:"model,omitempty"`
 	ReadBytes  uint64 `json:"read_bytes"`
 	WriteBytes uint64 `json:"write_bytes"`
 	ReadIOPS   uint64 `json:"read_iops"`
 	WriteIOPS  uint64 `json:"write_iops"`
 	IOTicksMs  uint64 `json:"io_ticks_ms"`
+}
+
+// GetDiskModel reads the disk model from sysfs and appends its drive type (SSD/HDD)
+func GetDiskModel(device string) string {
+	data, err := os.ReadFile(filepath.Join("/sys/block", device, "device", "model"))
+	if err != nil {
+		return ""
+	}
+	model := strings.TrimSpace(string(data))
+
+	// Determine HDD vs SSD/NVMe based on rotational queue flag
+	rotData, err := os.ReadFile(filepath.Join("/sys/block", device, "queue", "rotational"))
+	if err == nil {
+		if strings.TrimSpace(string(rotData)) == "0" {
+			if strings.HasPrefix(device, "nvme") {
+				model += " (NVMe)"
+			} else {
+				model += " (SSD)"
+			}
+		} else {
+			model += " (HDD)"
+		}
+	}
+	return model
 }
 
 // convertOctalEscapes replicates btop's convert_ascii_escapes() for mount paths
@@ -187,6 +212,7 @@ func CollectDisksIO() []DiskIO {
 
 		results = append(results, DiskIO{
 			Device:     device,
+			Model:      GetDiskModel(device),
 			ReadIOPS:   rIOPS,
 			WriteIOPS:  wIOPS,
 			ReadBytes:  rSectors * 512,

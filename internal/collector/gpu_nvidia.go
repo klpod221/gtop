@@ -12,20 +12,20 @@ type NvidiaProcess struct {
 }
 
 type NvidiaGPUStats struct {
-	Name             string
-	UtilizationGPU   uint32
-	UtilizationMem   uint32
-	TempC            uint32
-	PowerWatts       float64
-	PowerLimitWatts  float64
-	ClockCoreMHz     uint32
-	ClockMemMHz      uint32
-	VRAMTotal        uint64
-	VRAMUsed         uint64
-	VRAMFree         uint64
-	PCIeTxKBs        uint32
-	PCIeRxKBs        uint32
-	Processes        []NvidiaProcess
+	Name            string
+	UtilizationGPU  uint32
+	UtilizationMem  uint32
+	TempC           uint32
+	PowerWatts      float64
+	PowerLimitWatts float64
+	ClockCoreMHz    uint32
+	ClockMemMHz     uint32
+	VRAMTotal       uint64
+	VRAMUsed        uint64
+	VRAMFree        uint64
+	PCIeTxKBs       uint32
+	PCIeRxKBs       uint32
+	Processes       []NvidiaProcess
 }
 
 var nvmlInitialized bool

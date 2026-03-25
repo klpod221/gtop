@@ -20,6 +20,7 @@ type EngineUsage struct {
 
 // IntelGPUStats holds all Intel GPU metrics matching btop's pmu_sample() + pmu_calc()
 type IntelGPUStats struct {
+	Name          string        `json:"name"`
 	Engines       []EngineUsage `json:"engines"`
 	FreqActMHz    float64       `json:"freq_act_mhz"`
 	FreqReqMHz    float64       `json:"freq_req_mhz"`
@@ -56,14 +57,14 @@ type IntelGPUCollector struct {
 	numRapl     int
 	numImc      int
 
-	engines []engineInfo
-	freqReq pmuCounter
-	freqAct pmuCounter
-	rc6     pmuCounter
-	irq     pmuCounter
-	rGpu    pmuCounter
-	rPkg    pmuCounter
-	imcRead pmuCounter
+	engines  []engineInfo
+	freqReq  pmuCounter
+	freqAct  pmuCounter
+	rc6      pmuCounter
+	irq      pmuCounter
+	rGpu     pmuCounter
+	rPkg     pmuCounter
+	imcRead  pmuCounter
 	imcWrite pmuCounter
 
 	tsPrev uint64
@@ -351,6 +352,7 @@ func pmuCalc(prev, cur uint64, deltaNs float64, timeScale float64, resultScale f
 // Collect performs one sample cycle (btop: pmu_sample + pmu_calc)
 func (c *IntelGPUCollector) Collect() IntelGPUStats {
 	var stats IntelGPUStats
+	stats.Name = GetIntelGPUName()
 
 	if c.fd < 0 {
 		return stats
