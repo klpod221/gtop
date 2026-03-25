@@ -1,0 +1,30 @@
+# Binaries
+gtop
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test output and profiling
+*.test
+*.out
+*.prof
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDE / Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temporary JSON outputs from CLI testing
+*.json
+
+# Go workspace
+go.work
+go.work.sum
