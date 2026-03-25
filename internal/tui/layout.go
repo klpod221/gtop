@@ -41,6 +41,7 @@ func buildLayout(
 	netText widgetapi.Widget,
 	procText widgetapi.Widget,
 	gpuText widgetapi.Widget,
+	sysText widgetapi.Widget,
 ) []container.Option {
 	builder := grid.New()
 
@@ -57,7 +58,10 @@ func buildLayout(
 	// --- Bottom section: Left panels (50%) | Proc (50%) — 69% height ---
 	// Left column: mem+disks (35%) | gpu (25%) | net (39%)
 	leftElements := []grid.Element{
-		grid.RowHeightPerc(35,
+		grid.RowHeightPerc(20,
+			grid.Widget(sysText, borderOpts(" system ")...),
+		),
+		grid.RowHeightPerc(30,
 			grid.ColWidthPerc(50,
 				grid.Widget(memText, borderOpts(" mem ")...),
 			),
@@ -65,10 +69,10 @@ func buildLayout(
 				grid.Widget(diskText, borderOpts(" disks ")...),
 			),
 		),
-		grid.RowHeightPerc(25,
+		grid.RowHeightPerc(20,
 			grid.Widget(gpuText, borderOpts(" gpu ")...),
 		),
-		grid.RowHeightPerc(39,
+		grid.RowHeightPerc(30,
 			grid.Widget(netText, borderOpts(" net ")...),
 		),
 	}
@@ -92,7 +96,8 @@ func buildLayout(
 // BuildContainer creates the btop-style container with all widgets.
 func BuildContainer(w *widgets.CPUWidget, mem *widgets.MemWidget,
 	disk *widgets.DiskWidget, net *widgets.NetWidget,
-	proc *widgets.ProcWidget, gpu *widgets.GPUWidget) []container.Option {
+	proc *widgets.ProcWidget, gpu *widgets.GPUWidget,
+	sys *widgets.SystemWidget) []container.Option {
 
 	return buildLayout(
 		w.Graph,
@@ -102,5 +107,6 @@ func BuildContainer(w *widgets.CPUWidget, mem *widgets.MemWidget,
 		net.Text,
 		proc.Text,
 		gpu.Text,
+		sys.Text,
 	)
 }

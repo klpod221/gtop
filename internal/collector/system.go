@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 )
 
@@ -22,7 +23,19 @@ type HostInfo struct {
 	DiskModels       []string `json:"disk_models,omitempty"`
 }
 
+var (
+	hostInfoOnce sync.Once
+	staticHost   HostInfo
+)
+
 func CollectHostInfo() HostInfo {
+	hostInfoOnce.Do(func() {
+		staticHost = collectStaticHostInfo()
+	})
+	return staticHost
+}
+
+func collectStaticHostInfo() HostInfo {
 	info := HostInfo{}
 
 	info.SystemVendor = readDMI("sys_vendor")

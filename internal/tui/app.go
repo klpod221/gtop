@@ -51,6 +51,10 @@ func Run() error {
 	if err != nil {
 		return err
 	}
+	sysW, err := widgets.NewSystemWidget()
+	if err != nil {
+		return err
+	}
 
 	// Initialize GPU collectors
 	var intelCol *collector.IntelGPUCollector
@@ -74,9 +78,10 @@ func Run() error {
 	if intelCol != nil {
 		intelCol.Collect()
 	}
+	sysW.Update(collector.CollectHostInfo())
 
 	// Build layout (GPU panel always present)
-	layoutOpts := BuildContainer(cpuW, memW, diskW, netW, procW, gpuW)
+	layoutOpts := BuildContainer(cpuW, memW, diskW, netW, procW, gpuW, sysW)
 	c, err := container.New(t, layoutOpts...)
 	if err != nil {
 		return fmt.Errorf("container: %w", err)
@@ -109,6 +114,8 @@ func Run() error {
 
 				procs := collector.CollectProcesses(memStats.Total)
 				procW.Update(procs)
+
+				sysW.Update(collector.CollectHostInfo())
 
 				// GPU: update whichever is available
 				if intelCol != nil {
