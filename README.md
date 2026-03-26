@@ -79,8 +79,8 @@ The `setcap` command grants **two specific Linux capabilities** to the binary:
 | `gtop` / `gtop tui` | Launch interactive TUI dashboard | `./gtop` |
 | `gtop get` | Fetch and export telemetry data (JSON/Flat) | `./gtop get --modules cpu` |
 | `gtop agent` | Run as background telemetry daemon | `./gtop agent --dry-run --once` |
-| `gtop web` | *(Future)* Launch web-based UI | `./gtop web` |
-| `gtop mcp` | *(Future)* Launch Model Context Protocol server | `./gtop mcp` |
+| `gtop web` | Launch embedded Web-based UI (Vue + Tailwind) | `./gtop web -p 8080` |
+| `gtop mcp` | Launch Model Context Protocol server (JSON-RPC) | `./gtop mcp` |
 
 ### `gtop get` Flags (CLI mode)
 
