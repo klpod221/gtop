@@ -78,7 +78,7 @@ The `setcap` command grants **two specific Linux capabilities** to the binary:
 |------|-------------|---------|
 | `gtop` / `gtop tui` | Launch interactive TUI dashboard | `./gtop` |
 | `gtop get` | Fetch and export telemetry data (JSON/Flat) | `./gtop get --modules cpu` |
-| `gtop agent` | *(Future)* Run background daemon | `./gtop agent` |
+| `gtop agent` | Run as background telemetry daemon | `./gtop agent --dry-run --once` |
 | `gtop web` | *(Future)* Launch web-based UI | `./gtop web` |
 | `gtop mcp` | *(Future)* Launch Model Context Protocol server | `./gtop mcp` |
 
@@ -147,6 +147,200 @@ Valid fields: `usage`, `freq`, `temp`, `power`, `loadavg`, `uptime`, `name`, `ba
 
 # Filter processes matching "docker"
 ./gtop get --modules proc --proc-filter docker --proc-top 20
+```
+
+---
+
+## Agent Service (Daemon Mode)
+
+> **oikos-agent** — a long-running background agent that periodically collects system metrics and pushes them to a configurable remote endpoint.
+
+### Quick Start
+
+```bash
+# 1. Test locally without sending anything (dry-run, single cycle)
+./gtop agent --dry-run --once
+
+# 2. Edit config (auto-created with defaults on first run)
+nano ~/.config/oikos-agent/config.json
+
+# 3. Run as a persistent daemon
+./gtop agent
+
+# 4. Install as a systemd service (system-wide, needs root)
+sudo ./gtop agent install
+
+# 5. Install as a user service (no root required)
+./gtop agent install --user
+```
+
+### `gtop agent` Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | `~/.config/oikos-agent/config.json` | Override config file path |
+| `--dry-run` | `false` | Collect metrics, print to stderr, do **not** send |
+| `--once` | `false` | Run one collection cycle then exit |
+
+### Agent Subcommands
+
+| Subcommand | Description |
+|------|-------------|
+| `gtop agent install` | Write systemd unit + `systemctl enable --now gtop-agent` |
+| `gtop agent install --user` | Same but as a user service (`~/.config/systemd/user/`) |
+| `gtop agent uninstall` | `systemctl disable --now` + remove unit file |
+| `gtop agent config` | Print current config (creates default if missing) |
+| `gtop agent config --init` | (Re-)write default config then print it |
+| `gtop agent status` | Check if daemon is running via PID file |
+
+### Config File Reference
+
+**Location:** `~/.config/oikos-agent/config.json` (auto-created with defaults)
+
+```json
+{
+  "server": {
+    "endpoint": "http://your-server:8080/api/telemetry",
+    "auth_token": "",
+    "auth_header": "Authorization",
+    "timeout_seconds": 10,
+    "retry_count": 3,
+    "retry_delay_seconds": 5,
+    "tls_skip_verify": false,
+    "tls_ca_cert": "",
+    "compress": false
+  },
+  "agent": {
+    "interval_seconds": 5,
+    "machine_id": "",
+    "machine_name": "",
+    "tags": {},
+    "log_level": "info",
+    "log_file": "",
+    "pid_file": "/tmp/gtop-agent.pid"
+  },
+  "modules": {
+    "host":    { "enabled": true },
+    "memory":  { "enabled": true },
+    "cpu": {
+      "enabled": true,
+      "fields": ["usage", "freq", "temp", "power", "loadavg", "uptime", "name"]
+    },
+    "disk": {
+      "enabled": true,
+      "mount_filter": []
+    },
+    "network": {
+      "enabled": true,
+      "iface_filter": [],
+      "exclude_virtual": false
+    },
+    "processes": {
+      "enabled": false,
+      "top_n": 20,
+      "sort_by": "cpu",
+      "name_filter": ""
+    },
+    "gpu": {
+      "enabled": true,
+      "intel": true,
+      "nvidia": true,
+      "amd": true
+    }
+  }
+}
+```
+
+#### `server` Options
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `endpoint` | string | — | **Required.** Full URL to POST telemetry JSON to |
+| `auth_token` | string | `""` | Bearer token / API key value. Omitted if empty |
+| `auth_header` | string | `"Authorization"` | HTTP header name for the token (e.g. `X-Api-Key`) |
+| `timeout_seconds` | int | `10` | HTTP request timeout in seconds |
+| `retry_count` | int | `3` | Retry attempts on network failure |
+| `retry_delay_seconds` | int | `5` | Base delay between retries (doubles each attempt) |
+| `tls_skip_verify` | bool | `false` | Skip TLS cert validation (dev/testing only) |
+| `tls_ca_cert` | string | `""` | Path to custom PEM CA cert file |
+| `compress` | bool | `false` | Gzip-compress the POST body |
+
+#### `agent` Options
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `interval_seconds` | int | `5` | Collection + send cycle length |
+| `machine_id` | string | auto | Stable machine identifier (auto-read from `/etc/machine-id`) |
+| `machine_name` | string | hostname | Human-readable machine label |
+| `tags` | object | `{}` | Arbitrary key-value metadata sent in every payload |
+| `log_level` | string | `"info"` | Verbosity: `debug`, `info`, `warn`, `error` |
+| `log_file` | string | `""` | Log file path. Empty = stderr |
+| `pid_file` | string | `/tmp/gtop-agent.pid` | PID file written on start, removed on exit |
+
+#### `modules` Options
+
+| Module | Key | Options |
+|--------|-----|---------|
+| **host** | `enabled` | bool |
+| **cpu** | `enabled`, `fields` | `fields`: array of `usage`, `freq`, `temp`, `power`, `loadavg`, `uptime`, `name`, `battery` |
+| **memory** | `enabled` | bool |
+| **disk** | `enabled`, `mount_filter` | `mount_filter`: only collect these mount points (empty = all) |
+| **network** | `enabled`, `iface_filter`, `exclude_virtual` | `iface_filter`: filter by interface names; `exclude_virtual`: strip `br-*`, `veth*`, `docker*`, `lo` |
+| **processes** | `enabled`, `top_n`, `sort_by`, `name_filter` | `sort_by`: `cpu`, `mem`, `pid`, `name`, `io`; disabled by default |
+| **gpu** | `enabled`, `intel`, `nvidia`, `amd` | Toggle per-vendor collection |
+
+### Payload Schema
+
+The agent sends the same JSON payload as `gtop get`, enriched with agent metadata:
+
+```json
+{
+  "timestamp": 1774425456106,
+  "machine_id": "abc123...",
+  "machine_name": "my-server",
+  "tags": { "env": "prod", "rack": "A1" },
+  "host": { ... },
+  "cpu": { ... },
+  "memory": { ... },
+  "disks_space": [ ... ],
+  "disks_io": [ ... ],
+  "network": [ ... ],
+  "intel_gpu": { ... }
+}
+```
+
+### Systemd Service
+
+After `gtop agent install`, the unit file is written to `/etc/systemd/system/gtop-agent.service`:
+
+```ini
+[Unit]
+Description=gtop Telemetry Agent (oikos-agent)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gtop agent
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gtop-agent
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# View logs
+journalctl -u gtop-agent -f
+
+# Restart
+systemctl restart gtop-agent
+
+# Stop
+systemctl stop gtop-agent
 ```
 
 ---
@@ -355,31 +549,6 @@ Output example:
 ---
 
 ## Architecture
-
-```
-gtop/
-├── main.go                          # Entry point, CLI flags, --tui dispatch
-├── collector/
-│   ├── cpu.go                       # /proc/stat, hwmon, powercap
-│   ├── mem.go                       # /proc/meminfo, ZFS ARC
-│   ├── disk.go                      # /etc/mtab, statfs(), /sys/block/*/stat
-│   ├── net.go                       # /sys/class/net/*, getifaddrs
-│   ├── proc.go                      # /proc/[pid]/{stat,status,cmdline,io}
-│   ├── gpu.go                       # Intel GPU via perf_event_open (i915 PMU)
-│   ├── gpu_nvidia.go                # NVIDIA via NVML (go-nvml)
-│   └── gpu_amd.go                   # AMD via sysfs (drm subsystem)
-└── tui/
-    ├── app.go                       # TUI orchestrator (termdash + data loop)
-    ├── theme.go                     # Color palette
-    ├── layout.go                    # Grid layout builder
-    └── widgets/
-        ├── cpu.go                   # CPU sparkline + per-core bars
-        ├── mem.go                   # Memory/Swap gauges
-        ├── disk.go                  # Disk usage bars
-        ├── net.go                   # Network traffic sparklines
-        ├── proc.go                  # Process table
-        └── gpu.go                   # GPU utilization (Intel/NVIDIA/AMD)
-```
 
 All collectors are stateless between calls except for delta-based metrics (CPU usage, GPU counters, process CPU %), which maintain internal state via package-level variables.
 
