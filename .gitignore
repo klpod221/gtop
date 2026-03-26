@@ -23,7 +23,7 @@ Thumbs.db
 *~
 
 # Temporary JSON outputs from CLI testing
-*.json
+output.json
 
 # Go workspace
 go.work

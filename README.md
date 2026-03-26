@@ -162,7 +162,7 @@ Valid fields: `usage`, `freq`, `temp`, `power`, `loadavg`, `uptime`, `name`, `ba
 ./gtop agent --dry-run --once
 
 # 2. Edit config (auto-created with defaults on first run)
-nano ~/.config/oikos-agent/config.json
+nano ~/.config/gtop/config.json
 
 # 3. Run as a persistent daemon
 ./gtop agent
@@ -178,7 +178,7 @@ sudo ./gtop agent install
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config` | `~/.config/oikos-agent/config.json` | Override config file path |
+| `--config` | `~/.config/gtop/config.json` | Override config file path |
 | `--dry-run` | `false` | Collect metrics, print to stderr, do **not** send |
 | `--once` | `false` | Run one collection cycle then exit |
 
@@ -195,7 +195,7 @@ sudo ./gtop agent install
 
 ### Config File Reference
 
-**Location:** `~/.config/oikos-agent/config.json` (auto-created with defaults)
+**Location:** `~/.config/gtop/config.json` (auto-created with defaults)
 
 ```json
 {
@@ -315,7 +315,7 @@ After `gtop agent install`, the unit file is written to `/etc/systemd/system/gto
 
 ```ini
 [Unit]
-Description=gtop Telemetry Agent (oikos-agent)
+Description=gtop Telemetry Agent
 After=network-online.target
 Wants=network-online.target
 
@@ -342,6 +342,46 @@ systemctl restart gtop-agent
 # Stop
 systemctl stop gtop-agent
 ```
+
+---
+
+## Web Dashboard
+
+`gtop web` launches a lightweight HTTP server serving a modern Vue 3 + Tailwind CSS dashboard.
+
+```bash
+# Start the web UI on default port 8080
+./gtop web
+
+# Start on custom port
+./gtop web -p 9090
+```
+
+The Web Dashboard features:
+- **Responsive Layout:** CSS Grid auto-fits components for both Desktop and Mobile.
+- **Real-time Updates:** Fetches telemetry JSON via REST API every second.
+- **Detailed Metrics:** CPU (temperature, power, per-core load), Memory (swap, physical RAM), Network (with interface selection), GPU (Intel, NVIDIA, AMD).
+- **Storage & I/O:** Displays mounted filesystems with filter support, plus real-time Read/Write I/O rates.
+- **Process Manager:** Search, sort by CPU/RAM, and filter processes by user.
+
+Settings configured in the web interface (like preferred network interface or storage filters) are persisted automatically using the unified backend API.
+
+---
+
+## MCP Server (Model Context Protocol)
+
+`gtop mcp` starts a JSON-RPC server over stdio adhering to the Model Context Protocol. This allows LLMs (like Claude, Cursor, AI agents) to query live system telemetry directly.
+
+```bash
+./gtop mcp
+```
+
+### Available MCP Resources
+- `gtop://metrics/all` - Complete system snapshot
+- `gtop://metrics/cpu` - CPU usage, frequency, and temp
+- `gtop://metrics/memory` - RAM, swap usage, ZFS arc
+- `gtop://metrics/disk` - Disk bounds and I/O rates
+- `gtop://metrics/network` - Network RX/TX stats
 
 ---
 

@@ -3,14 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
-	"gtop/internal/collector"
 	"gtop/internal/agent" // To use AgentPayload format
+	"gtop/internal/collector"
+	"gtop/internal/config"
 	"gtop/web"
 
 	"github.com/gorilla/websocket"
@@ -23,16 +25,18 @@ var upgrader = websocket.Upgrader{
 }
 
 type Server struct {
-	port      int
-	clients   map[*websocket.Conn]bool
-	clientsMu sync.Mutex
-	intelCol  *collector.IntelGPUCollector
+	port       int
+	configPath string
+	clients    map[*websocket.Conn]bool
+	clientsMu  sync.Mutex
+	intelCol   *collector.IntelGPUCollector
 }
 
-func NewServer(port int) *Server {
+func NewServer(port int, configPath string) *Server {
 	return &Server{
-		port:    port,
-		clients: make(map[*websocket.Conn]bool),
+		port:       port,
+		configPath: configPath,
+		clients:    make(map[*websocket.Conn]bool),
 	}
 }
 
@@ -60,22 +64,97 @@ func (s *Server) Start() error {
 		s.intelCol.Collect()
 	}
 
-	// Setup endpoints
-	http.HandleFunc("/ws", s.wsHandler)
-	
+	mux := http.NewServeMux()
+
+	// WebSocket endpoint
+	mux.HandleFunc("/ws", s.wsHandler)
+
+	// Config API endpoints
+	mux.HandleFunc("/api/config", s.configHandler)
+
 	// Serve static frontend files on "/"
 	distFS, err := fs.Sub(web.DistFS, "dist")
 	if err != nil {
 		return fmt.Errorf("failed to load embedded UI files: %v", err)
 	}
-	http.Handle("/", http.FileServer(http.FS(distFS)))
+	mux.Handle("/", http.FileServer(http.FS(distFS)))
 
 	// Start broadcast loop
 	go s.broadcastLoop()
 
 	addr := fmt.Sprintf(":%d", s.port)
 	log.Printf("Starting Web UI Server on http://localhost%s", addr)
-	return http.ListenAndServe(addr, nil)
+	return http.ListenAndServe(addr, mux)
+}
+
+// configHandler handles GET and POST for /api/config (web section only).
+func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	cfgPath := s.configPath
+	if cfgPath == "" {
+		var err error
+		cfgPath, err = config.DefaultConfigPath()
+		if err != nil {
+			http.Error(w, "cannot determine config path", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		cfg, err := config.Load(cfgPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(cfg.Web)
+
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "reading body: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		cfg, err := config.Load(cfgPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		var webCfg config.WebConfig
+		if err := json.Unmarshal(body, &webCfg); err != nil {
+			http.Error(w, "invalid JSON: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// Preserve web port from current config if not provided
+		if webCfg.Port == 0 {
+			webCfg.Port = cfg.Web.Port
+		}
+		cfg.Web = webCfg
+
+		if err := config.Write(cfgPath, cfg); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (s *Server) wsHandler(w http.ResponseWriter, r *http.Request) {

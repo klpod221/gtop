@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const DefaultConfigDir = ".config/oikos-agent"
+const DefaultConfigDir = ".config/gtop"
 const DefaultConfigFile = "config.json"
 
 // ServerConfig holds all HTTP transport settings for the remote endpoint.
@@ -68,6 +68,20 @@ type AgentBehaviorConfig struct {
 
 	// PIDFile is the path where the agent writes its PID when running.
 	PIDFile string `json:"pid_file"`
+}
+
+// WebConfig holds settings for the embedded Web UI server.
+type WebConfig struct {
+	// Port is the HTTP port the web server listens on.
+	Port int `json:"port"`
+
+	// NetworkInterface is the preferred interface to show on the topbar.
+	// If empty, auto-selects by priority: LAN (en*) > WiFi (wl*) > first other.
+	NetworkInterface string `json:"network_interface"`
+
+	// StorageFilter restricts which mount points are shown in the UI.
+	// An empty list means all mounts are shown.
+	StorageFilter []string `json:"storage_filter"`
 }
 
 // CPUModuleConfig controls what CPU data is collected.
@@ -153,17 +167,34 @@ type SimpleModuleConfig struct {
 	Enabled bool `json:"enabled"`
 }
 
-// AgentConfig is the root configuration structure for the oikos-agent.
-// It is loaded from $HOME/.config/oikos-agent/config.json.
-type AgentConfig struct {
+// Config is the root configuration structure for gtop.
+// It is loaded from $HOME/.config/gtop/config.json.
+type Config struct {
+	// EnabledAgent enables the telemetry agent daemon.
+	EnabledAgent bool `json:"enabled_agent"`
+
+	// EnabledWeb enables the embedded Web UI server.
+	EnabledWeb bool `json:"enabled_web"`
+
+	Web     WebConfig           `json:"web"`
 	Server  ServerConfig        `json:"server"`
 	Agent   AgentBehaviorConfig `json:"agent"`
 	Modules ModulesConfig       `json:"modules"`
 }
 
+// AgentConfig is an alias kept for backwards-compatibility inside the codebase.
+type AgentConfig = Config
+
 // DefaultConfig returns a fully-populated config with sensible defaults.
-func DefaultConfig() AgentConfig {
-	return AgentConfig{
+func DefaultConfig() Config {
+	return Config{
+		EnabledAgent: false,
+		EnabledWeb:   false,
+		Web: WebConfig{
+			Port:             8080,
+			NetworkInterface: "",
+			StorageFilter:    []string{},
+		},
 		Server: ServerConfig{
 			Endpoint:          "http://your-server:8080/api/telemetry",
 			AuthToken:         "",
@@ -227,7 +258,7 @@ func DefaultConfigPath() (string, error) {
 
 // Load reads and parses the config from the given file path.
 // If the file does not exist, it writes a default config and returns it.
-func Load(path string) (AgentConfig, error) {
+func Load(path string) (Config, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		cfg := DefaultConfig()
 		if writeErr := Write(path, cfg); writeErr != nil {
@@ -238,12 +269,12 @@ func Load(path string) (AgentConfig, error) {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return AgentConfig{}, fmt.Errorf("reading config %s: %w", path, err)
+		return Config{}, fmt.Errorf("reading config %s: %w", path, err)
 	}
 
 	cfg := DefaultConfig()
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return AgentConfig{}, fmt.Errorf("parsing config %s: %w", path, err)
+		return Config{}, fmt.Errorf("parsing config %s: %w", path, err)
 	}
 
 	if err := Validate(cfg); err != nil {
@@ -254,7 +285,7 @@ func Load(path string) (AgentConfig, error) {
 }
 
 // Write serializes cfg to JSON and writes it to path, creating parent directories.
-func Write(path string, cfg AgentConfig) error {
+func Write(path string, cfg Config) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return fmt.Errorf("creating config directory: %w", err)
 	}
@@ -266,10 +297,7 @@ func Write(path string, cfg AgentConfig) error {
 }
 
 // Validate checks the config for required fields and sane values.
-func Validate(cfg AgentConfig) error {
-	if cfg.Server.Endpoint == "" {
-		return fmt.Errorf("server.endpoint must not be empty")
-	}
+func Validate(cfg Config) error {
 	if cfg.Agent.IntervalSeconds < 1 {
 		return fmt.Errorf("agent.interval_seconds must be >= 1")
 	}
@@ -283,6 +311,9 @@ func Validate(cfg AgentConfig) error {
 	validSortBy := map[string]bool{"cpu": true, "mem": true, "pid": true, "name": true, "io": true}
 	if cfg.Modules.Processes.SortBy != "" && !validSortBy[cfg.Modules.Processes.SortBy] {
 		return fmt.Errorf("modules.processes.sort_by must be one of: cpu, mem, pid, name, io")
+	}
+	if cfg.Web.Port < 1 || cfg.Web.Port > 65535 {
+		return fmt.Errorf("web.port must be between 1 and 65535")
 	}
 	return nil
 }

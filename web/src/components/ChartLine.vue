@@ -41,7 +41,10 @@ const props = defineProps({
     type: String,
     default: '#3b82f6'
   },
-  isDark: Boolean
+  unit: {
+    type: String,
+    default: ''
+  }
 })
 
 const chartOption = computed(() => {
@@ -50,16 +53,22 @@ const chartOption = computed(() => {
     return `${dObj.getSeconds().toString().padStart(2, '0')}s`
   })
   const vals = props.data.map(d => d.value)
-  
-  const textColor = props.isDark ? '#9ca3af' : '#6b7280'
-  const splitLineColor = props.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'
-  
+
+  const textColor = '#9ca3af'
+  const splitLineColor = 'rgba(255,255,255,0.05)'
+  const isPercent = props.title.includes('%') || props.unit === '%'
+
   return {
-    tooltip: { 
+    animation: false,
+    tooltip: {
       trigger: 'axis',
-      backgroundColor: props.isDark ? 'rgba(31, 41, 55, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-      borderColor: props.isDark ? '#374151' : '#e5e7eb',
-      textStyle: { color: props.isDark ? '#f3f4f6' : '#111827' }
+      backgroundColor: 'rgba(31, 41, 55, 0.9)',
+      borderColor: '#374151',
+      textStyle: { color: '#f3f4f6' },
+      formatter: (params) => {
+        const v = params[0]?.value ?? 0
+        return `${isPercent ? v.toFixed(1) + '%' : v.toFixed(2) + (props.unit ? ' ' + props.unit : '')}`
+      }
     },
     grid: { left: 40, right: 10, top: 10, bottom: 20 },
     xAxis: {
@@ -73,9 +82,9 @@ const chartOption = computed(() => {
     yAxis: {
       type: 'value',
       min: 0,
-      max: props.title.includes('%') ? 100 : undefined,
+      max: isPercent ? 100 : undefined,
       splitLine: { lineStyle: { color: splitLineColor, type: 'dashed' } },
-      axisLabel: { color: textColor }
+      axisLabel: { color: textColor, formatter: isPercent ? '{value}%' : '{value}' }
     },
     series: [
       {
